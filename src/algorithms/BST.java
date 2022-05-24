@@ -25,6 +25,14 @@ public class BST implements BSTInterface {
         head = new Node(Integer.MIN_VALUE);
     }
 
+    boolean validate(Node pred, Node curr, boolean isRight) {
+        if (isRight) {
+            return !pred.marked && !curr.marked && pred.right == curr;
+        } else {
+            return !pred.marked && !curr.marked && pred.left == curr;
+        }
+    }
+
     public final boolean contains(final int key) {
         Node curr = head;
         while (curr.key != Integer.MAX_VALUE) {
@@ -40,7 +48,44 @@ public class BST implements BSTInterface {
     }
 
     public final boolean insert(final int key) {
+        while (true) {
+            Node pred = head;
+            Node curr = pred.right;
+            boolean isRight = true;
+            while (curr.key != Integer.MAX_VALUE) {
+                if (curr.key < key) {
+                    pred = curr;
+                    curr = curr.right;
+                    isRight = true;
+                } else if (curr.key > key) {
+                    pred = curr;
+                    curr = curr.left;
+                    isRight = false;
+                } else {
+                    // We found the key!
+                    break;
+                }
+            }
+            synchronized (pred) {
+                synchronized (curr) {
+                    if (validate(pred, curr, isRight)) {
+                        if (curr.key == key) {
+                            return false;
+                        } else {
+                            Node node = new Node(key);
+                            if (isRight) {
+                                pred.right = node;
+                            } else {
+                                pred.left = node;
+                            }
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
     }
+    
 
     public final boolean remove(final int key) {
     }
