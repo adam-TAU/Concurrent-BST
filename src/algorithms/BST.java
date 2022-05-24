@@ -12,8 +12,9 @@ public class BST implements BSTInterface {
     
         public Node(int key) { // Node constructor
             this.key = key;
-            this.left = null;
-            this.right = null;
+            // Left & Right initialized to sentinels
+            this.left = new Node(Integer.MAX_VALUE);
+            this.right = new Node(Integer.MAX_VALUE);
             this.marked = false;
         }
     }
@@ -22,8 +23,6 @@ public class BST implements BSTInterface {
 
     public BST() {
         head = new Node(Integer.MIN_VALUE);
-        head.left = new Node(Integer.MAX_VALUE);
-        head.right = new Node(Integer.MAX_VALUE);
     }
 
     public final boolean contains(final int key) {
