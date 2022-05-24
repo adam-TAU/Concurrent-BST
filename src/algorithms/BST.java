@@ -22,11 +22,13 @@ public class BST implements BSTInterface {
 
     public BST() {
         head = new Node(Integer.MIN_VALUE);
+        head.left = new Node(Integer.MAX_VALUE);
+        head.right = new Node(Integer.MAX_VALUE);
     }
 
     public final boolean contains(final int key) {
         Node curr = head;
-        while (curr != null) {
+        while (curr.key != Integer.MAX_VALUE) {
             if (curr.key < key) {
                 curr = curr.right;
             } else if (curr.key > key) {
