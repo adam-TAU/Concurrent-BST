@@ -3,7 +3,7 @@
 mkdir build
 
 ######## ENTER PATH TO YOUR JAVA, JAVAC AND JAR BINARIES HERE
-export JAVA_HOME=/usr/local/lib/jdk-8u25
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
 export _JAVA_OPTIONS=
 export PATH=${JAVA_HOME}/bin:${PATH}
 

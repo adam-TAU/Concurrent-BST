@@ -17,8 +17,9 @@ public class BST implements BSTInterface {
     }
 
     // Return your ID #
+    // TODO: apply ID
     public String getName() {
-        return "XXXXXXXXXX";
+        return "XXXXXXXXX";
     }
 
     // Returns size of the tree.
