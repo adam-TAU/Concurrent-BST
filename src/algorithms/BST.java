@@ -1,10 +1,11 @@
 package algorithms;
 
 import main.BSTInterface;
+import main.TreePrinter.PrintableNode;
 
 public class BST implements BSTInterface {
 
-    static class Node {
+    static class Node implements PrintableNode {
         public final int key; // key is immutable
         public volatile Node left;
         public volatile Node right;
@@ -16,6 +17,21 @@ public class BST implements BSTInterface {
             this.right = null;
             this.marked = false;
         }
+        
+	    @Override
+	    public PrintableNode getLeft() {
+	      return left;
+	    }
+
+	    @Override
+	    public PrintableNode getRight() {
+	      return right;
+	    }
+
+	    @Override
+	    public String getText() {
+	      return Integer.toString(key);
+	    }
     }
 
     static class NodePair {
@@ -30,12 +46,12 @@ public class BST implements BSTInterface {
         }
     }
 
-    final Node head;
+    public final Node head;
     final Node sentinel;
 
     public BST() {
-        head = new Node(Integer.MIN_VALUE);
-        sentinel = new Node(Integer.MAX_VALUE);
+        head = new Node(-1); // TODO: change to `Integer.MIN_VALUE`
+        sentinel = new Node(-1); // TODO: change to `Integer.MAX_VALUE`
         head.left = sentinel;
         head.right = sentinel;
     }
@@ -52,7 +68,7 @@ public class BST implements BSTInterface {
         Node parent = head;
         Node curr = head.right;
         boolean isRight = true;
-        while (curr.key != Integer.MAX_VALUE) {
+        while (curr.key != -1) { // TODO: change back to `Integer.MAX_VALUE`
             if (curr.key < key) {
                 parent = curr;
                 curr = curr.right;
@@ -70,7 +86,7 @@ public class BST implements BSTInterface {
     }
 
     private static boolean isSentinelNode(Node node) {
-        return node.key == Integer.MAX_VALUE;
+        return node.key == -1; // change back to `Integer.MAX_VALUE`
     }
 
     private static boolean isRealNode(Node node) {
@@ -131,7 +147,7 @@ public class BST implements BSTInterface {
                             Node node = new Node(key);
                             node.left = sentinel;
                             node.right = sentinel;
-                            setChild(pred, curr, isRight);
+                            setChild(pred, node, isRight);
                             return true;
                         }
                     }
@@ -191,6 +207,7 @@ public class BST implements BSTInterface {
                         curr.right = toRemove.right;
                         setChild(parentToRemove, curr, isToRemoveRight);
                         pred.left = sentinel;
+                        return;
                     }
                 }
             }

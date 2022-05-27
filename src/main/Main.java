@@ -498,7 +498,7 @@ public class Main {
         int numThreads = 0;    // number of threads to use for prefilling phase
         int numOperations = 0; // number of operations to perform per thread in each iteration (up to MAX_REPS iterations)
         
-        numThreads = Math.min(48, Runtime.getRuntime().availableProcessors() / 2);
+        numThreads = 1; // TODO: change back to `Math.min(48, Runtime.getRuntime().availableProcessors() / 2)`
         numOperations = 10 + maxkey/(2*numThreads);
 
         // we prefill over several iterations (up to MAX_REPS iterations).
@@ -741,6 +741,13 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
-        invokeRun(args, null);
-    }
+        // invokeRun(args, null);
+        TreePrinter tp = new TreePrinter();
+        BST tmpBst = new BST();
+        for (int i = 5; i < 100; i++) {
+        	tmpBst.insert(i);
+        	tmpBst.remove(i*2 - 50);
+        }
+		tp.print(tmpBst.head);
+	}        
 }
