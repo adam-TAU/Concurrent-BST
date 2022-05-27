@@ -35,16 +35,16 @@ public class BST implements BSTInterface {
 
     public BST() {
         head = new Node(Integer.MIN_VALUE);
-        sentinel = new Node(Integer.MAX_VALUE);
+        sentinel = null;
         head.left = sentinel;
         head.right = sentinel;
     }
 
     boolean validate(Node pred, Node curr, boolean isRight) {
         if (isRight) {
-            return !pred.marked && !curr.marked && pred.right == curr;
+            return !pred.marked && (isSentinelNode(curr) || !curr.marked) && pred.right == curr;
         } else {
-            return !pred.marked && !curr.marked && pred.left == curr;
+            return !pred.marked && (isSentinelNode(curr) ||!curr.marked) && pred.left == curr;
         }
     }
 
@@ -52,7 +52,7 @@ public class BST implements BSTInterface {
         Node parent = head;
         Node curr = head.right;
         boolean isRight = true;
-        while (curr.key != Integer.MAX_VALUE) {
+        while (curr != null) {
             if (curr.key < key) {
                 parent = curr;
                 curr = curr.right;
@@ -70,7 +70,7 @@ public class BST implements BSTInterface {
     }
 
     private static boolean isSentinelNode(Node node) {
-        return node.key == Integer.MAX_VALUE;
+        return node == null;
     }
 
     private static boolean isRealNode(Node node) {
@@ -123,16 +123,20 @@ public class BST implements BSTInterface {
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             synchronized (pred) {
-                synchronized (curr) {
-                    if (validate(pred, curr, isRight)) {               
-                        if (curr.key == key) {
-                            return false;
-                        } else {
-                            Node node = new Node(key);
-                            node.left = sentinel;
-                            node.right = sentinel;
-                            setChild(pred, node, isRight);
-                            return true;
+                if (curr == null) {
+                    if (validate(pred, curr, isRight)) {
+                        Node node = new Node(key);
+                        node.left = sentinel;
+                        node.right = sentinel;
+                        setChild(pred, node, isRight);
+                        return true;
+                    }
+                } else {
+                    synchronized (curr) {
+                        if (validate(pred, curr, isRight)) {               
+                            if (curr.key == key) {
+                                return false;
+                            }
                         }
                     }
                 }
@@ -147,9 +151,11 @@ public class BST implements BSTInterface {
         if (isSentinelNode(curr)) {
             return new NodePair(parent, curr, isRight);
         }
-        while (isRealNode(curr.left)) {
+        Node next = curr.left;
+        while (isRealNode(next)) {
             parent = curr;
-            curr = curr.left;
+            curr = next;
+            next = curr.left;
             isRight = false;
         }
         return new NodePair(parent, curr, isRight);
@@ -165,8 +171,11 @@ public class BST implements BSTInterface {
                 synchronized (curr) {
                     if (validate(pred, curr, isRight) && isSentinelNode(curr.left)) {
                         curr.left = node;
+                        // curr.right another subtree, which is fine
                         setChild(parent, node.right, isToRemoveRight);// parent.left = node.right;
+                        // other side of the parent doesn't concern us
                         node.right = sentinel;
+                        // node.left is supposed to be empty
                         return;
                     }
                 }
@@ -180,22 +189,31 @@ public class BST implements BSTInterface {
             Node pred = pair.parent;
             Node curr = pair.current;
             boolean isRight = pair.isRight;
+            // The node is binary --> there is always a successor!
             synchronized (pred) {
                 synchronized (curr) {
                     if (validate(pred, curr, isRight) && isRealNode(curr) && isSentinelNode(curr.left)) {
                         toRemove.marked = true;
                         if (isRealNode(curr.right)) {
+                            // Move the successor to be a leaf
                             connectToSuccessor(pred, isRight, curr);
+                            continue;
                         }
-                        // Now the curr must be a leaf!
+                        // curr must be a leaf!
                         if (toRemove.right != curr) {
                             curr.right = toRemove.right;
                         }
-                        setChild(parentToRemove, curr, isToRemoveRight);
-                        setChild(pred, sentinel, isRight);
-                        // pred.left = sentinel;
                         curr.left = toRemove.left;
+                        setChild(parentToRemove, curr, isToRemoveRight);
+                        setChild(pred, sentinel, isRight); // pred.left = sentinel;
                         return;
+                        // curr.left = toRemove.left;
+                        // setChild(pred, curr.right, isRight);
+                        // setChild(parentToRemove, curr, isToRemoveRight);
+                        // if (toRemove.right != curr) {
+                        //     curr.right = toRemove.right;
+                        // }
+                        // return;
                     }
                 }
             }
@@ -209,6 +227,10 @@ public class BST implements BSTInterface {
             Node pred = pair.parent;
             Node curr = pair.current;
             boolean isRight = pair.isRight;
+            if (curr == null) {
+                // curr is null, we didn't find the key!
+                return false;
+            }
             synchronized (pred) {
                 synchronized (curr) {
                     if (validate(pred, curr, isRight)) {
