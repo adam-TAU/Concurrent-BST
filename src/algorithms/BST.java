@@ -124,14 +124,14 @@ public class BST implements BSTInterface {
             boolean isRight = pair.isRight;
             synchronized (pred) {
                 synchronized (curr) {
-                    if (validate(pred, curr, isRight)) {
+                    if (validate(pred, curr, isRight)) {               
                         if (curr.key == key) {
                             return false;
                         } else {
                             Node node = new Node(key);
                             node.left = sentinel;
                             node.right = sentinel;
-                            setChild(pred, curr, isRight);
+                            setChild(pred, node, isRight);
                             return true;
                         }
                     }
@@ -155,7 +155,7 @@ public class BST implements BSTInterface {
         return new NodePair(parent, curr, isRight);
     }
 
-    private void connectToSuccessor(Node parent, Node node) {
+    private void connectToSuccessor(Node parent, boolean isToRemoveRight, Node node) {
         while (true) {
             NodePair pair = findSuccessor(node);
             Node pred = pair.parent;
@@ -165,7 +165,7 @@ public class BST implements BSTInterface {
                 synchronized (curr) {
                     if (validate(pred, curr, isRight) && isSentinelNode(curr.left)) {
                         curr.left = node;
-                        parent.left = node.right;
+                        setChild(parent, node.right, isToRemoveRight);// parent.left = node.right;
                         node.right = sentinel;
                         return;
                     }
@@ -182,15 +182,20 @@ public class BST implements BSTInterface {
             boolean isRight = pair.isRight;
             synchronized (pred) {
                 synchronized (curr) {
-                    if (validate(pred, curr, isRight) && isSentinelNode(curr.left)) {
+                    if (validate(pred, curr, isRight) && isRealNode(curr) && isSentinelNode(curr.left)) {
+                        toRemove.marked = true;
                         if (isRealNode(curr.right)) {
-                            connectToSuccessor(pred, curr);
+                            connectToSuccessor(pred, isRight, curr);
                         }
                         // Now the curr must be a leaf!
-                        Node sentinel = curr.right;
-                        curr.right = toRemove.right;
+                        if (toRemove.right != curr) {
+                            curr.right = toRemove.right;
+                        }
                         setChild(parentToRemove, curr, isToRemoveRight);
-                        pred.left = sentinel;
+                        setChild(pred, sentinel, isRight);
+                        // pred.left = sentinel;
+                        curr.left = toRemove.left;
+                        return;
                     }
                 }
             }
@@ -210,7 +215,6 @@ public class BST implements BSTInterface {
                         if (curr.key != key) {
                             return false;
                         } else {
-                            curr.marked = true;
                             /**
                              * 0. Does curr have two children?
                              * 1. find successor
@@ -221,9 +225,11 @@ public class BST implements BSTInterface {
                                 removeBinaryNode(pred, curr, isRight);
                             } else if (isRealNode(curr.left)) {
                                 // Only the left child is real - connect the parent directly to it
+                                curr.marked = true;
                                 setChild(pred, curr.left, isRight);
                             } else {
                                 // Either only right child is real or both children aren't
+                                curr.marked = true;
                                 setChild(pred, curr.right, isRight);
                             }
                             return true;
