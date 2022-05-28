@@ -37,7 +37,19 @@ public class BST implements BSTInterface {
             } else {
                 this.left = child;
             }
-        }    
+        }
+
+        /**
+         * Get the child of the current.
+         * @param isRight - Whether to get the right or the left child
+         */
+        public Node getChild(boolean isRight) {
+            if (isRight) {
+                return this.right;
+            } else {
+                return this.left;
+            }
+        }
     }
 
     /**
@@ -90,16 +102,11 @@ public class BST implements BSTInterface {
      * and none of them is marked.
      * The function should be called only when the locks over both the parent and child (if not null) are held.
      * @param result - A search result
-     * @return
      */
     private boolean validate(NodePair result) {
         Node pred = result.parent;
         Node curr = result.current;
-        if (result.isRight) {
-            return !pred.marked && (isSentinelNode(curr) || !curr.marked) && pred.right == curr;
-        } else {
-            return !pred.marked && (isSentinelNode(curr) || !curr.marked) && pred.left == curr;
-        }
+        return !pred.marked && (isSentinelNode(curr) || !curr.marked) && pred.getChild(result.isRight) == curr;
     }
 
     /**
@@ -177,23 +184,23 @@ public class BST implements BSTInterface {
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             synchronized (pred) {
+                if (!validate(pair)) {
+                    // It is possible for curr to become the parent of pred if it is the successor of pred's parent.
+                    // In such a case, synchronizing without checking might cause a deadlock because of the reversed order!
+                    continue;
+                }
                 if (isSentinelNode(curr)) {
                     // Can't synchronize on null!
-                    if (validate(pair)) {
-                        // Add the new node as a leaf and return success
-                        Node node = new Node(key, sentinel, sentinel);
-                        pred.setChild(node, isRight);
-                        return true;
-                    }
+                    // Add the new node as a leaf and return success
+                    Node node = new Node(key, sentinel, sentinel);
+                    pred.setChild(node, isRight);
+                    return true;
                 } else {
                     // We found something!
                     synchronized (curr) {
                         if (validate(pair)) {               
                             // The key is already in the tree!
-                            // TODO: is this check actually needed?
-                            if (curr.key == key) {
-                                return false;
-                            }
+                            return false;
                         }
                     }
                 }
@@ -213,20 +220,20 @@ public class BST implements BSTInterface {
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             synchronized (pred) {
-                if (isSentinelNode(curr)) {
-                    if (validate(pair)) {
-                        // curr is null, we didn't find the key!
-                        return false;
-                    }
+                if (!validate(pair)) {
+                    // It is possible for curr to become the parent of pred if it is the successor of pred's parent.
+                    // In such a case, synchronizing without checking might cause a deadlock because of the reversed order!
                     continue;
+                }
+                if (isSentinelNode(curr)) {
+                    // curr is null, we didn't find the key!
+                    return false;
                 }
                 synchronized (curr) {
                     if (validate(pair)) {
-                        // TODO: Should never happen!
-                        if (curr.key != key) { return false; }
                         /**
                          * We split into cases - removing a node with two children is much harder than
-                         * removing a node with 1 child / a leaf.
+                         * removing a node with only 1 child or a leaf.
                          */
                         if (isRealNode(curr.left) && isRealNode(curr.right)) {
                             // Note: marking curr will happen in the function when needed
@@ -283,6 +290,9 @@ public class BST implements BSTInterface {
             boolean isRight = pair.isRight;
             // Note: The node is binary --> there is always a successor, and there is no need for null-checks
             synchronized (pred) {
+                if (!validate(pair)) {
+                    continue;
+                }
                 synchronized (curr) {
                     // Make sure the successor hasn't changed
                     // Also, it's worth noting that the successor should have no left child (otherwise the child is the successor)
@@ -324,6 +334,9 @@ public class BST implements BSTInterface {
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             synchronized (pred) {
+                if (!validate(pair)) {
+                    continue;
+                }
                 synchronized (curr) {
                     NodePair secondPair = findSuccessor(succ.current);
                     if (secondPair.current != curr || secondPair.parent != pred || secondPair.isRight != isRight || isRealNode(curr.left)) {
