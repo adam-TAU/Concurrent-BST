@@ -37,7 +37,15 @@ public class BST implements BSTInterface {
             } else {
                 this.left = child;
             }
-        }    
+        }
+
+        public Node getChild(boolean isRight) {
+            if (isRight) {
+                return this.right;
+            } else {
+                return this.left;
+            }
+        }
     }
 
     /**
@@ -95,11 +103,13 @@ public class BST implements BSTInterface {
     private boolean validate(NodePair result) {
         Node pred = result.parent;
         Node curr = result.current;
-        if (result.isRight) {
-            return !pred.marked && (isSentinelNode(curr) || !curr.marked) && pred.right == curr;
-        } else {
-            return !pred.marked && (isSentinelNode(curr) || !curr.marked) && pred.left == curr;
-        }
+        return !pred.marked && (isSentinelNode(curr) || !curr.marked) && pred.getChild(result.isRight) == curr;
+    }
+
+    private boolean validate2(NodePair result) {
+        Node pred = result.parent;
+        Node curr = result.current;
+        return pred.getChild(result.isRight) == curr;
     }
 
     /**
@@ -115,7 +125,12 @@ public class BST implements BSTInterface {
         // If the result contains the key - then it is in the tree (might be marked though), and we can return it.
         // If we don't find the key, make sure we get the same parent for it twice - otherwise,
         // it means that we might have missed it when it is being moved (during a remove operation of another node).
+        int i = 0;
         while (true) {
+            ++i;
+            if (i > 10) {
+                // Thread.dumpStack();
+            }
             NodePair second = findKeyOnce(key);
             if (second.parent == first.parent || isRealNode(second.current)) {
                 return second;
@@ -137,7 +152,12 @@ public class BST implements BSTInterface {
         Node parent = head;
         Node curr = head.right;
         boolean isRight = true;
+        int i = 0;
         while (curr != sentinel) {
+            ++i;
+            if (i > 100) {
+                // Thread.dumpStack();
+            }
             if (curr.key < key) {
                 parent = curr;
                 curr = curr.right;
@@ -171,7 +191,13 @@ public class BST implements BSTInterface {
      * @return false if the key is already in the tree, and true otherwise.
      */
     public final boolean insert(final int key) {
+        // System.out.format("Inserting %d!\n", key);
+        int i = 0;
         while (true) {
+            ++i;
+            if (i > 10) {
+                // Thread.dumpStack();
+            }
             NodePair pair = findKey(key);
             Node pred = pair.parent;
             Node curr = pair.current;
@@ -187,6 +213,11 @@ public class BST implements BSTInterface {
                     }
                 } else {
                     // We found something!
+                    if (!validate2(pair)) {
+                        if (!curr.marked)
+                            System.out.println("WTF1");
+                        continue;
+                    }
                     synchronized (curr) {
                         if (validate(pair)) {               
                             // The key is already in the tree!
@@ -207,7 +238,13 @@ public class BST implements BSTInterface {
      * @return true if the key was removed, false otherwise - the key does not exist in the tree
      */
     public final boolean remove(final int key) {
+        // System.out.format("Removing %d!\n", key);
+        int i = 0;
         while (true) {
+            ++i;
+            if (i > 10) {
+                // Thread.dumpStack();
+            }
             NodePair pair = findKey(key);
             Node pred = pair.parent;
             Node curr = pair.current;
@@ -218,6 +255,11 @@ public class BST implements BSTInterface {
                         // curr is null, we didn't find the key!
                         return false;
                     }
+                    continue;
+                }
+                if (!validate2(pair)) {
+                    if (!curr.marked)
+                        System.out.println("WTF2");
                     continue;
                 }
                 synchronized (curr) {
@@ -232,9 +274,23 @@ public class BST implements BSTInterface {
                             // Note: marking curr will happen in the function when needed
                             removeBinaryNode(pair);
                         } else if (isRealNode(curr.left)) {
-                            // Only the left child is real - connect the parent directly to it
+                            synchronized (curr.left) {
+                                if (!validate(new NodePair(curr, curr.left, false))) {
+                                    System.out.println("ERROR!");
+                                    continue;
+                                }
+                                // Only the left child is real - connect the parent directly to it
+                                curr.marked = true;
+                                pred.setChild(curr.left, isRight);
+                            }
+                        } else if (isRealNode(curr.right)) {
+                            if (!validate(new NodePair(curr, curr.right, true))) {
+                                System.out.println("ERROR!");
+                                continue;
+                            }
+                            // Either only right child is real or both children aren't
                             curr.marked = true;
-                            pred.setChild(curr.left, isRight);
+                            pred.setChild(curr.right, isRight);
                         } else {
                             // Either only right child is real or both children aren't
                             curr.marked = true;
@@ -257,7 +313,12 @@ public class BST implements BSTInterface {
         Node curr = base.right;
         boolean isRight = true;
         Node next = curr.left;
+        int i = 0;
         while (isRealNode(next)) {
+            ++i;
+            if (i > 10) {
+                // Thread.dumpStack();
+            }
             parent = curr;
             curr = next;
             next = curr.left;
@@ -276,13 +337,23 @@ public class BST implements BSTInterface {
      *                   It is assumed that both `parent` and `current`'s locks are held by this thread.
      */
     private void removeBinaryNode(NodePair toRemove) {
+        int i = 0;
         while (true) {
+            ++i;
+            if (i > 10) {
+                // Thread.dumpStack();
+            }
             NodePair pair = findSuccessor(toRemove.current);
             Node pred = pair.parent;
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             // Note: The node is binary --> there is always a successor, and there is no need for null-checks
             synchronized (pred) {
+                if (!validate2(pair)) {
+                    if (!curr.marked)
+                        System.out.println("WTF3");
+                    continue;
+                }
                 synchronized (curr) {
                     // Make sure the successor hasn't changed
                     // Also, it's worth noting that the successor should have no left child (otherwise the child is the successor)
@@ -297,7 +368,13 @@ public class BST implements BSTInterface {
                             removeAndReplaceWithLeaf(toRemove, pair);
                         } else {
                             // The successor is not a leaf - move it to be a leaf and then remove it
-                            removeWithNonLeafSucessor(toRemove, pair);
+                            synchronized (curr.right) {
+                                if (!validate(new NodePair(curr, curr.right, true))) {
+                                    System.out.println("ERROR!!!");
+                                    continue;
+                                }
+                                removeWithNonLeafSucessor(toRemove, pair);
+                            }
                         }
                         
                         return;
@@ -318,12 +395,23 @@ public class BST implements BSTInterface {
      *         (both nodes in toRemove and both nodes in succ).
      */
     private void removeWithNonLeafSucessor(NodePair toRemove, NodePair succ) {
+        int i = 0;
         while (true) {
+            ++i;
+            if (i > 10) {
+                // Thread.dumpStack();
+            }
             NodePair pair = findSuccessor(succ.current);
             Node pred = pair.parent;
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             synchronized (pred) {
+                if (!validate2(pair)) {
+                    if (!curr.marked)
+                        System.out.println("WTF4");
+                    // System.out.println();
+                    continue;
+                }
                 synchronized (curr) {
                     NodePair secondPair = findSuccessor(succ.current);
                     if (secondPair.current != curr || secondPair.parent != pred || secondPair.isRight != isRight || isRealNode(curr.left)) {
@@ -383,14 +471,18 @@ public class BST implements BSTInterface {
     // NOTE: Guaranteed to be called without concurrent operations,
 	// so need to be thread-safe.  The method will only be called
 	// once the benchmark completes.
-        return getSize(head.right);
+        return getSize(head.right, 0);
     }
 
-    private int getSize(Node current) {
+    private int getSize(Node current, int recDepth) {
+        if (recDepth > 200) {
+            // Thread.dumpStack();
+            return 0;
+        }
         if (isSentinelNode(current)) {
             return 0;
         }
-        return 1 + getSize(current.left) + getSize(current.right);
+        return 1 + getSize(current.left, recDepth + 1) + getSize(current.right, recDepth + 1);
     }
 
     // Returns the sum of keys in the tree
@@ -400,13 +492,18 @@ public class BST implements BSTInterface {
 	//
 	// Make sure to sum over a "long" variable or you will get incorrect
 	// results due to integer overflow!
-        return sumKeys(head.right);
+        return sumKeys(head.right, 0);
     }
 
-    private long sumKeys(Node current) {
+    private long sumKeys(Node current, int recDepth) {
+        if (recDepth > 200) {
+            // Thread.dumpStack();
+            return 0;
+        }
+
         if (isSentinelNode(current)) {
             return 0;
         }
-        return (long)current.key + sumKeys(current.left) + sumKeys(current.right);
+        return (long)current.key + sumKeys(current.left, recDepth + 1) + sumKeys(current.right, recDepth + 1);
     }
 }

@@ -250,12 +250,14 @@ public class Main {
         @Override
         public void run() {
             try { start.await(); } catch (Exception ex) { ex.printStackTrace(); System.exit(-1); }
-            
+
             for (int i=0; i < opsToPerform && !done.b; i++) {
                 int key = rng.nextNatural(maxkey)+1;
                 if (rng.nextNatural() < ratio.ins * Integer.MAX_VALUE) {
+                    // System.out.format("INSERT: %d\n", key);
                     if (tree.insert(key)) keysum += key;
                 } else {
+                    // System.out.format("REMOVE: %d\n", key);
                     if (tree.remove(key)) keysum -= key;
                 }
             }
@@ -498,7 +500,7 @@ public class Main {
         int numThreads = 0;    // number of threads to use for prefilling phase
         int numOperations = 0; // number of operations to perform per thread in each iteration (up to MAX_REPS iterations)
         
-        numThreads = Math.min(48, Runtime.getRuntime().availableProcessors() / 2);
+        numThreads = 1; // Math.min(48, Runtime.getRuntime().availableProcessors() / 2);
         numOperations = 10 + maxkey/(2*numThreads);
 
         // we prefill over several iterations (up to MAX_REPS iterations).
@@ -512,6 +514,7 @@ public class Main {
         // in the steady state for this ratio, then we are done.
         // otherwise, we continue prefilling the tree.
         while (Math.abs(toPercent((double)treeSize / expectedSize) - 100) > THRESHOLD_PERCENT) {
+            System.out.format("Size: %d/%d\n", treeSize, expectedSize);
             if (nreps++ > MAX_REPS) {
                 System.out.println("WARNING: COULD NOT REACH STEADY STATE AFTER " + nreps + " REPETITIONS.");
                 System.out.println("         treesize=" + treeSize + " expected=" + expectedSize + " percentToExpected=" + toPercent((double)treeSize / expectedSize) + " %diff=" + Math.abs(toPercent((double)treeSize / expectedSize) - 100) + " THRESHOLD_PERCENT=" + THRESHOLD_PERCENT);
@@ -741,6 +744,50 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                for (Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+                    System.out.println("==============================================");
+                    for (StackTraceElement el : e.getValue()) {
+                        System.out.println(el);
+                    }
+                }
+            }
+        });
+
+        // new Thread() {
+        //     public void run() {
+        //         while (true) {
+        //             try {
+        //                 Thread.sleep(5000);
+        //                 for (Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+        //                     System.out.println("==============================================");
+        //                     for (StackTraceElement el : e.getValue()) {
+        //                         System.out.println(el);
+        //                     }
+        //                 }
+        //                 System.out.println("++++++++++++++++++++++++++++++++++++++++");
+        //                 System.out.println("++++++++++++++++++++++++++++++++++++++++");
+        //                 System.out.println("++++++++++++++++++++++++++++++++++++++++");
+        //             } catch (InterruptedException e) {
+
+        //             }
+        //         }
+        //     }
+        // }.start();
+    
         invokeRun(args, null);
+        // BSTInterface tree = new BST();
+        // System.out.println(tree.insert(1));
+        // System.out.println(tree.insert(10));
+        // System.out.println(tree.insert(14));
+        // System.out.println(tree.insert(11));
+        // System.out.println(tree.insert(13));
+        // System.out.println(tree.insert(5));
+        // System.out.println(tree.insert(6));
+        // System.out.println(tree.remove(10));
+        // System.out.println(tree.remove(6));
+        // System.out.println(tree.insert(1));
+        // System.out.println(tree.size());
     }
 }
