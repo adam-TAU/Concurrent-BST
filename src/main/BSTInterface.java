@@ -26,4 +26,5 @@ public interface BSTInterface {
     public int size();
     public String getName();
     public long getKeysum();
+    public void printTree();
 }
