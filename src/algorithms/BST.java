@@ -161,21 +161,27 @@ public class BST implements BSTInterface {
         return new NodePair(parent, curr, isRight);
     }
 
-    private void connectToSuccessor(Node parent, boolean isToRemoveRight, Node node) {
+    private void connectToSuccessor(NodePair toRemove, NodePair node) {
         while (true) {
-            NodePair pair = findSuccessor(node);
+            NodePair pair = findSuccessor(node.current);
             Node pred = pair.parent;
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             synchronized (pred) {
                 synchronized (curr) {
+                    NodePair secondPair = findSuccessor(node.current);
+                    if (secondPair.current != curr || secondPair.parent != pred || secondPair.isRight != isRight) {
+                        continue;
+                    }
                     if (validate(pred, curr, isRight) && isSentinelNode(curr.left)) {
-                        curr.left = node;
+                        curr.left = node.current;
                         // curr.right another subtree, which is fine
-                        setChild(parent, node.right, isToRemoveRight);// parent.left = node.right;
+                        setChild(node.parent, node.current.right, node.isRight);// parent.left = node.right;
                         // other side of the parent doesn't concern us
-                        node.right = sentinel;
+                        node.current.right = sentinel;
                         // node.left is supposed to be empty
+                        // Now node.current is the left child of curr, and it is a leaf - so we can remove it!
+                        replaceWithLeaf(toRemove, new NodePair(curr, node.current, false));
                         return;
                     }
                 }
@@ -183,42 +189,45 @@ public class BST implements BSTInterface {
         }
     }
 
-    private void removeBinaryNode(Node parentToRemove, Node toRemove, boolean isToRemoveRight) {
+    private void replaceWithLeaf(NodePair toRemove, NodePair replacementLeaf) {
+        if (toRemove.current.right != replacementLeaf.current) {
+            replacementLeaf.current.right = toRemove.current.right;
+        }
+        replacementLeaf.current.left = toRemove.current.left;
+        setChild(toRemove.parent, replacementLeaf.current, toRemove.isRight);
+        setChild(replacementLeaf.parent, sentinel, replacementLeaf.isRight);
+        return;
+    }
+
+
+    private void removeBinaryNode(NodePair toRemove) {
         while (true) {
-            NodePair pair = findSuccessor(toRemove);
+            NodePair pair = findSuccessor(toRemove.current);
             Node pred = pair.parent;
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             // The node is binary --> there is always a successor!
             synchronized (pred) {
                 synchronized (curr) {
+                    NodePair secondPair = findSuccessor(toRemove.current);
+                    if (secondPair.current != curr || secondPair.parent != pred || secondPair.isRight != isRight) {
+                        continue;
+                    }
+
                     if (validate(pred, curr, isRight) && isRealNode(curr) && isSentinelNode(curr.left)) {
-                        toRemove.marked = true;
+                        toRemove.current.marked = true;
                         if (isRealNode(curr.right)) {
                             // Move the successor to be a leaf
-                            connectToSuccessor(pred, isRight, curr);
-                            continue;
+                            connectToSuccessor(toRemove, pair);
+                            return;
                         }
-                        // curr must be a leaf!
-                        if (toRemove.right != curr) {
-                            curr.right = toRemove.right;
-                        }
-                        curr.left = toRemove.left;
-                        setChild(parentToRemove, curr, isToRemoveRight);
-                        setChild(pred, sentinel, isRight); // pred.left = sentinel;
+                        
+                        replaceWithLeaf(toRemove, pair);
                         return;
-                        // curr.left = toRemove.left;
-                        // setChild(pred, curr.right, isRight);
-                        // setChild(parentToRemove, curr, isToRemoveRight);
-                        // if (toRemove.right != curr) {
-                        //     curr.right = toRemove.right;
-                        // }
-                        // return;
                     }
                 }
             }
         }
-        // TODO: tough case
     }
 
     public final boolean remove(final int key) {
@@ -244,7 +253,7 @@ public class BST implements BSTInterface {
                              * 3. replace parents
                              */
                             if (isRealNode(curr.left) && isRealNode(curr.right)) {
-                                removeBinaryNode(pred, curr, isRight);
+                                removeBinaryNode(pair);
                             } else if (isRealNode(curr.left)) {
                                 // Only the left child is real - connect the parent directly to it
                                 curr.marked = true;
