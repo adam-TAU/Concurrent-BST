@@ -229,7 +229,7 @@ public class BST implements BSTInterface {
                          * removing a node with 1 child / a leaf.
                          */
                         if (isRealNode(curr.left) && isRealNode(curr.right)) {
-                            // note: marking curr will happen in the function when needed
+                            // Note: marking curr will happen in the function when needed
                             removeBinaryNode(pair);
                         } else if (isRealNode(curr.left)) {
                             // Only the left child is real - connect the parent directly to it
@@ -247,13 +247,15 @@ public class BST implements BSTInterface {
         }
     }
 
+    /**
+     * Find the successor of an inner node in the tree that has a right child.
+     * This can be done by going one node to the right, and then left until it's no longer possible.
+     * @param base - The node for which the successor is searched for.
+     */
     private NodePair findSuccessor(Node base) {
         Node parent = base;
         Node curr = base.right;
         boolean isRight = true;
-        if (isSentinelNode(curr)) {
-            return new NodePair(parent, curr, isRight);
-        }
         Node next = curr.left;
         while (isRealNode(next)) {
             parent = curr;
@@ -305,27 +307,39 @@ public class BST implements BSTInterface {
         }
     }
 
-    private void removeWithNonLeafSucessor(NodePair toRemove, NodePair node) {
+    /**
+     * Remove a binary node from the tree when its successor is not a leaf.
+     * In that case, the successor has no left child, but has a right child.
+     * The removal is done by finding the successor's successor - which must also have no left child.
+     * Then, it's possible to put the successor as a leaf of the 2-successor, and handle it as a regular removal with a leaf successor. 
+     * @param toRemove - The binary node to remove.
+     * @param succ - The successor of the node to remove.
+     * @note - It is assumed that the locks on the involved nodes are held
+     *         (both nodes in toRemove and both nodes in succ).
+     */
+    private void removeWithNonLeafSucessor(NodePair toRemove, NodePair succ) {
         while (true) {
-            NodePair pair = findSuccessor(node.current);
+            NodePair pair = findSuccessor(succ.current);
             Node pred = pair.parent;
             Node curr = pair.current;
             boolean isRight = pair.isRight;
             synchronized (pred) {
                 synchronized (curr) {
-                    NodePair secondPair = findSuccessor(node.current);
+                    NodePair secondPair = findSuccessor(succ.current);
                     if (secondPair.current != curr || secondPair.parent != pred || secondPair.isRight != isRight || isRealNode(curr.left)) {
                         continue;
                     }
                     if (validate(pair)) {
-                        curr.left = node.current;
-                        // curr.right another subtree, which is fine
-                        node.parent.setChild(node.current.right, node.isRight);// parent.left = node.right;
-                        // other side of the parent doesn't concern us
-                        node.current.right = sentinel;
-                        // node.left is supposed to be empty
-                        // Now node.current is the left child of curr, and it is a leaf - so we can remove it!
-                        removeAndReplaceWithLeaf(toRemove, new NodePair(curr, node.current, false));
+                        // Change curr's left child to point to the original succcessor (which is its predecessor).
+                        // curr.right holds another subtree, which is fine
+                        curr.left = succ.current;
+                        // The successor's parent now points to its right subtree.
+                        // The other side of the parent doesn't concern us
+                        succ.parent.setChild(succ.current.right, succ.isRight);                        
+                        // The successor now becomes a leaf, as its left side is empty.
+                        succ.current.right = sentinel;
+                        // Now succ.current is the left child of curr, and it is a leaf - so we can remove it!
+                        removeAndReplaceWithLeaf(toRemove, new NodePair(curr, succ.current, false));
                         return;
                     }
                 }
